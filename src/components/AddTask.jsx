@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import axios from "axios";
 import { format } from "date-fns";
 import { FaTasks } from "react-icons/fa";
-
+import { AuthContext } from "../provider/AuthProvider";
+import { FiLogOut } from "react-icons/fi";
 
 const AddTask = () => {
+  const { user, logOut } = useContext(AuthContext);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [task, setTask] = useState({
     title: "",
@@ -26,10 +29,13 @@ const AddTask = () => {
       ? format(new Date(endDate), "yyyy-MM-dd HH:mm:ss")
       : null;
 
-    // console.log({ title, description, category, formattedEndDate });
+    const email = user?.email;
+
+    // console.log({ title, description, category, formattedEndDate, email });
 
     try {
       const response = await axios.post("http://localhost:5000/tasks", {
+        email,
         title,
         description,
         category,
@@ -46,13 +52,27 @@ const AddTask = () => {
 
   return (
     <>
-      <div className="flex justify-center mt-4">
+      <div className="max-w-screen-2xl px-4 mx-auto mt-4 flex justify-between items-center">
         <button
           onClick={() => setIsModalOpen(true)}
           className="px-6 py-3 bg-[#FF633C] text-white font-semibold rounded-lg shadow-md hover:bg-[#FF4500] transition duration-300 flex items-center gap-2"
         >
-          <FaTasks/> Add Task
+          <FaTasks /> Add Task
         </button>
+        <div className="flex gap-5 text-white text-center">
+          <button onClick={logOut}>
+            <FiLogOut className="text-3xl" />
+          </button>
+          <div>
+            <img
+              referrerPolicy="no-referrer"
+              src={user?.photoURL}
+              alt="img"
+              className="w-12 h-12 rounded-full border-2 border-white mx-auto"
+            />
+            <h1>{user?.displayName}</h1>
+          </div>
+        </div>
       </div>
 
       {isModalOpen && (

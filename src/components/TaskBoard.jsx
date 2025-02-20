@@ -9,6 +9,7 @@ import { TaskCard } from "./TaskCard";
 import { io } from "socket.io-client";
 import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
+import LoadingSpinner from "./LoadingSpinner";
 
 const socket = io("http://localhost:5000");
 
@@ -161,12 +162,6 @@ const TaskBoard = () => {
     });
   };
 
-  // Loading Spinner Component
-  const LoadingSpinner = () => (
-    <div className="flex justify-center items-center w-full h-full">
-      <div className="w-12 h-12 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
-    </div>
-  );
 
   return (
     <DndContext
