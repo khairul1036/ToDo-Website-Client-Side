@@ -10,7 +10,7 @@ import { io } from "socket.io-client";
 import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
 
-const socket = io("http://localhost:5000"); // Replace with your backend URL
+const socket = io("http://localhost:5000");
 
 const TaskBoard = () => {
   const [tasks, setTasks] = useState({
@@ -18,6 +18,9 @@ const TaskBoard = () => {
     inProgress: [],
     done: [],
   });
+
+  const [draggingTask, setDraggingTask] = useState(null);
+  const [draggingCategory, setDraggingCategory] = useState(null); // Track the category being hovered over
 
   // Fetch tasks from backend
   const fetchTasks = async () => {
@@ -30,7 +33,7 @@ const TaskBoard = () => {
   };
 
   useEffect(() => {
-    fetchTasks(); // Initial fetch
+    fetchTasks();
 
     socket.on("taskUpdated", (updatedTasks) => {
       setTasks(formatTasks(updatedTasks));
@@ -39,7 +42,7 @@ const TaskBoard = () => {
     socket.on("taskAdded", (newTask) => {
       setTasks((prevTasks) => {
         const updatedTasks = { ...prevTasks };
-        updatedTasks[newTask.category || "todo"].push(newTask);
+        updatedTasks[newTask?.category].push(newTask);
         return { ...updatedTasks };
       });
     });
@@ -50,11 +53,10 @@ const TaskBoard = () => {
     };
   }, []);
 
-  // Format tasks into categorized lists
   const formatTasks = (tasksArray) => {
     const groupedTasks = { todo: [], inProgress: [], done: [] };
     tasksArray.forEach((task) => {
-      const category = task.category || "todo";
+      const category = task?.category;
       groupedTasks[category].push(task);
     });
 
@@ -65,9 +67,26 @@ const TaskBoard = () => {
     return groupedTasks;
   };
 
-  // Handle Drag End (Reorder or Move to Another Category)
+  // Handle Drag Start
+  const handleDragStart = (event) => {
+    setDraggingTask(event.active.id);
+  };
+
+  // Handle Drag Over (Allow dragging into empty categories as well)
+  const handleDragOver = (event) => {
+    const { over } = event;
+    if (!over || tasks[over.id] === undefined) return false; // Ensure category exists
+
+    // Allow dragging into an empty category, or a category with tasks
+    setDraggingCategory(over.id);
+  };
+
+  // Handle Drag End (Reorder and move tasks between categories)
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+    setDraggingTask(null);
+    setDraggingCategory(null); // Reset on drag end
+
     if (!over) return;
 
     const activeId = active.id;
@@ -75,24 +94,27 @@ const TaskBoard = () => {
     let oldCategory = null;
     let newCategory = null;
 
-    // Find the current category of the task
+    // Find the categories
     Object.keys(tasks).forEach((category) => {
       if (tasks[category]?.some((task) => task._id === activeId)) {
         oldCategory = category;
       }
-      if (tasks[category]?.some((task) => task._id === overId)) {
+      if (
+        tasks[category]?.some((task) => task._id === overId) ||
+        tasks[category]?.length === 0
+      ) {
         newCategory = category;
       }
     });
 
-    if (!oldCategory) return;
-    if (!newCategory) newCategory = oldCategory;
+    if (!oldCategory || !newCategory || newCategory === "") return;
 
+    // Perform the task reordering and moving
     setTasks((prev) => {
       const newTasks = { ...prev };
 
       if (oldCategory === newCategory) {
-        // Reordering within the same category
+        // Move task within the same category
         const oldIndex = newTasks[oldCategory].findIndex(
           (task) => task._id === activeId
         );
@@ -105,10 +127,8 @@ const TaskBoard = () => {
           newIndex
         );
 
-        // Emit real-time update
         socket.emit("updateTasks", newTasks);
 
-        // Send reorder request to backend
         axios.post("http://localhost:5000/tasks/reorder", {
           category: oldCategory,
           tasks: newTasks[oldCategory].map((task, index) => ({
@@ -117,7 +137,7 @@ const TaskBoard = () => {
           })),
         });
       } else {
-        // Moving to another category
+        // Move task to a different category
         const taskToMove = newTasks[oldCategory].find(
           (task) => task._id === activeId
         );
@@ -127,25 +147,12 @@ const TaskBoard = () => {
         taskToMove.category = newCategory;
         newTasks[newCategory] = [...(newTasks[newCategory] || []), taskToMove];
 
-        // Emit real-time update
         socket.emit("updateTasks", newTasks);
 
-        // Send category update to backend
-        axios
-          .patch(`http://localhost:5000/tasks/${activeId}`, {
-            category: newCategory,
-            newOrder: newTasks[newCategory].length - 1, // Assign last position
-          })
-        //   .then(() => {
-        //     // Send reordering request
-        //     axios.post("http://localhost:5000/tasks/reorder", {
-        //       category: newCategory,
-        //       tasks: newTasks[newCategory].map((task, index) => ({
-        //         _id: task._id,
-        //         order: index,
-        //       })),
-        //     });
-        //   });
+        axios.patch(`http://localhost:5000/tasks/${activeId}`, {
+          category: newCategory,
+          newOrder: newTasks[newCategory].length - 1,
+        });
       }
 
       return newTasks;
@@ -153,14 +160,23 @@ const TaskBoard = () => {
   };
 
   return (
-    <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+    <DndContext
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex flex-col md:flex-row gap-4 p-4">
         {Object.keys(tasks).map((category) => (
           <div
             key={category}
-            className="flex-1 bg-gray-100 p-4 rounded-md shadow-md min-h-[300px]"
+            className={`flex-1 p-4 rounded-md shadow-md min-h-[300px] bg-gray-100 ${
+              draggingCategory === category
+                ? "bg-gray-200 border-2 border-blue-500"
+                : "" // Highlight category when being hovered
+            }`}
           >
-            <h2 className="text-lg font-bold text-gray-700 capitalize">
+            <h2 className="text-lg font-bold text-gray-700 capitalize mb-2">
               {category}
             </h2>
             <SortableContext
@@ -168,17 +184,23 @@ const TaskBoard = () => {
               strategy={verticalListSortingStrategy}
             >
               <AnimatePresence>
-                {tasks[category]?.map((task) => (
-                  <motion.div
-                    key={task._id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                  >
-                    <TaskCard key={task._id} task={task} />
-                  </motion.div>
-                ))}
+                {tasks[category]?.length > 0 ? (
+                  tasks[category]?.map((task) => (
+                    <motion.div
+                      key={task._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                    >
+                      <TaskCard key={task._id} task={task} />
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-gray-400 text-sm text-center py-10 border-dashed border-2 border-gray-300 rounded-md">
+                    No tasks
+                  </div>
+                )}
               </AnimatePresence>
             </SortableContext>
           </div>
