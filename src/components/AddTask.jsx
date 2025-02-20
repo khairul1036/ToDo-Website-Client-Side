@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { format } from "date-fns";
+import { FaTasks } from "react-icons/fa";
 
 
 const AddTask = () => {
@@ -48,9 +49,9 @@ const AddTask = () => {
       <div className="flex justify-center mt-4">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-6 py-3 bg-[#FF633C] text-white font-semibold rounded-lg shadow-md hover:bg-[#FF4500] transition duration-300"
+          className="px-6 py-3 bg-[#FF633C] text-white font-semibold rounded-lg shadow-md hover:bg-[#FF4500] transition duration-300 flex items-center gap-2"
         >
-          Add Task
+          <FaTasks/> Add Task
         </button>
       </div>
 
