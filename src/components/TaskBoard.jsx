@@ -8,6 +8,7 @@ import {
 import { TaskCard } from "./TaskCard";
 import { io } from "socket.io-client";
 import axios from "axios";
+import { AnimatePresence, motion } from "framer-motion";
 
 const socket = io("http://localhost:5000"); // Replace with your backend URL
 
@@ -19,18 +20,33 @@ const TaskBoard = () => {
   });
 
   // Fetch tasks from backend
-  useEffect(() => {
-    axios.get("http://localhost:5000/tasks").then((response) => {
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/tasks");
       setTasks(formatTasks(response.data));
-    });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
 
-    // Listen for real-time updates
+  useEffect(() => {
+    fetchTasks(); // Initial fetch
+
     socket.on("taskUpdated", (updatedTasks) => {
       setTasks(formatTasks(updatedTasks));
     });
 
+    socket.on("taskAdded", (newTask) => {
+      setTasks((prevTasks) => {
+        const updatedTasks = { ...prevTasks };
+        updatedTasks[newTask.category || "todo"].push(newTask);
+        return { ...updatedTasks };
+      });
+    });
+
     return () => {
       socket.off("taskUpdated");
+      socket.off("taskAdded");
     };
   }, []);
 
@@ -38,12 +54,14 @@ const TaskBoard = () => {
   const formatTasks = (tasksArray) => {
     const groupedTasks = { todo: [], inProgress: [], done: [] };
     tasksArray.forEach((task) => {
-      const category = task.category || "todo"; // Default to "todo" if category is missing
-      if (!groupedTasks[category]) {
-        groupedTasks[category] = [];
-      }
+      const category = task.category || "todo";
       groupedTasks[category].push(task);
     });
+
+    Object.keys(groupedTasks).forEach((category) => {
+      groupedTasks[category].sort((a, b) => a.order - b.order);
+    });
+
     return groupedTasks;
   };
 
@@ -55,23 +73,26 @@ const TaskBoard = () => {
     const activeId = active.id;
     const overId = over.id;
     let oldCategory = null;
+    let newCategory = null;
 
-    // Find the category of the dragged task
+    // Find the current category of the task
     Object.keys(tasks).forEach((category) => {
       if (tasks[category]?.some((task) => task._id === activeId)) {
         oldCategory = category;
       }
+      if (tasks[category]?.some((task) => task._id === overId)) {
+        newCategory = category;
+      }
     });
 
-    if (!oldCategory) return; // Exit if the category is not found
-
-    const newCategory = over.data.current?.category || oldCategory;
+    if (!oldCategory) return;
+    if (!newCategory) newCategory = oldCategory;
 
     setTasks((prev) => {
       const newTasks = { ...prev };
 
-      // Reordering within the same category
       if (oldCategory === newCategory) {
+        // Reordering within the same category
         const oldIndex = newTasks[oldCategory].findIndex(
           (task) => task._id === activeId
         );
@@ -84,10 +105,13 @@ const TaskBoard = () => {
           newIndex
         );
 
-        // Update backend order
+        // Emit real-time update
+        socket.emit("updateTasks", newTasks);
+
+        // Send reorder request to backend
         axios.post("http://localhost:5000/tasks/reorder", {
           category: oldCategory,
-          tasks: newTasks[oldCategory]?.map((task, index) => ({
+          tasks: newTasks[oldCategory].map((task, index) => ({
             _id: task._id,
             order: index,
           })),
@@ -103,24 +127,26 @@ const TaskBoard = () => {
         taskToMove.category = newCategory;
         newTasks[newCategory] = [...(newTasks[newCategory] || []), taskToMove];
 
-        // Update backend with new category & order
+        // Emit real-time update
+        socket.emit("updateTasks", newTasks);
+
+        // Send category update to backend
         axios
           .patch(`http://localhost:5000/tasks/${activeId}`, {
             category: newCategory,
+            newOrder: newTasks[newCategory].length - 1, // Assign last position
           })
-          .then(() => {
-            axios.post("http://localhost:5000/tasks/reorder", {
-              category: newCategory,
-              tasks: newTasks[newCategory]?.map((task, index) => ({
-                _id: task._id,
-                order: index,
-              })),
-            });
-          });
+        //   .then(() => {
+        //     // Send reordering request
+        //     axios.post("http://localhost:5000/tasks/reorder", {
+        //       category: newCategory,
+        //       tasks: newTasks[newCategory].map((task, index) => ({
+        //         _id: task._id,
+        //         order: index,
+        //       })),
+        //     });
+        //   });
       }
-
-      // Emit real-time update
-      socket.emit("updateTasks", newTasks);
 
       return newTasks;
     });
@@ -132,7 +158,7 @@ const TaskBoard = () => {
         {Object.keys(tasks).map((category) => (
           <div
             key={category}
-            className="flex-1 bg-gray-100 p-4 rounded-md shadow-md"
+            className="flex-1 bg-gray-100 p-4 rounded-md shadow-md min-h-[300px]"
           >
             <h2 className="text-lg font-bold text-gray-700 capitalize">
               {category}
@@ -141,21 +167,19 @@ const TaskBoard = () => {
               items={tasks[category]?.map((task) => task._id) || []}
               strategy={verticalListSortingStrategy}
             >
-              {/* {Array.isArray(tasks[category]) && tasks[category].map((task) => (
-                <TaskCard key={task._id} task={task} />
-              ))} */}
-
-              {Array.isArray(tasks[category]) &&
-                tasks[category]
-                  .sort((a, b) => {
-                    // First sort by category name (assuming category is a string)
-                    if (a.category < b.category) return -1;
-                    if (a.category > b.category) return 1;
-
-                    // If category names are equal, sort by the 'order' field
-                    return a.order - b.order;
-                  })
-                  .map((task) => <TaskCard key={task._id} task={task} />)}
+              <AnimatePresence>
+                {tasks[category]?.map((task) => (
+                  <motion.div
+                    key={task._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                  >
+                    <TaskCard key={task._id} task={task} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </SortableContext>
           </div>
         ))}
