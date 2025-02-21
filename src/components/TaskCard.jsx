@@ -53,7 +53,7 @@ export const TaskCard = ({ fetchTasks, task }) => {
 
     // send the updated task data to the backend API to save changes
     axios
-      .patch(`http://localhost:5000/tasks/update/${user?.email}/${id}`, {
+      .patch(`${import.meta.env.VITE_url}/tasks/update/${user?.email}/${id}`, {
         title,
         description,
         category,
@@ -92,7 +92,7 @@ export const TaskCard = ({ fetchTasks, task }) => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         const response = await axios.delete(
-          `http://localhost:5000/tasks/${email}/${taskId}`
+          `${import.meta.env.VITE_url}/tasks/${email}/${taskId}`
         );
         fetchTasks();
         if (response) {

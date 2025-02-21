@@ -100,6 +100,7 @@ const AddTask = () => {
                   value={task.title}
                   onChange={(e) => setTask({ ...task, title: e.target.value })}
                   className="w-full p-3 border border-gray-300 rounded-md"
+                  maxLength={50}
                   required
                 />
               </div>
@@ -113,6 +114,7 @@ const AddTask = () => {
                   onChange={(e) =>
                     setTask({ ...task, description: e.target.value })
                   }
+                  maxLength={200}
                   className="w-full p-3 border border-gray-300 rounded-md"
                 />
               </div>
@@ -145,6 +147,7 @@ const AddTask = () => {
                     setTask({ ...task, endDate: e.target.value })
                   }
                   className="w-full p-3 border border-gray-300 rounded-md"
+                  required
                 />
               </div>
 

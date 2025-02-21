@@ -11,7 +11,7 @@ import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
 import { AuthContext } from "../provider/AuthProvider";
 
-const socket = io("http://localhost:5000");
+const socket = io(`${import.meta.env.VITE_url}`);
 
 const TaskBoard = () => {
   const { user } = useContext(AuthContext);
@@ -27,7 +27,7 @@ const TaskBoard = () => {
   // Fetch tasks from backend
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/tasks/${user?.email}`);
+      const response = await axios.get(`${import.meta.env.VITE_url}/tasks/${user?.email}`);
       setTasks(formatTasks(response.data));
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -140,7 +140,7 @@ const TaskBoard = () => {
 
         socket.emit("updateTasks", newTasks);
 
-        axios.post(`http://localhost:5000/tasks/reorder/${user?.email}`, {
+        axios.post(`${import.meta.env.VITE_url}/tasks/reorder/${user?.email}`, {
           category: oldCategory,
           tasks: newTasks[oldCategory].map((task, index) => ({
             _id: task._id,
@@ -160,7 +160,7 @@ const TaskBoard = () => {
 
         socket.emit("updateTasks", newTasks);
 
-        axios.patch(`http://localhost:5000/tasks/${user?.email}/${activeId}`, {
+        axios.patch(`${import.meta.env.VITE_url}/tasks/${user?.email}/${activeId}`, {
           category: newCategory,
           newOrder: newTasks[newCategory].length - 1,
         });
