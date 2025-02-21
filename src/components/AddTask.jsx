@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { FaTasks } from "react-icons/fa";
 import { AuthContext } from "../provider/AuthProvider";
 import { FiLogOut } from "react-icons/fi";
+import Swal from "sweetalert2";
 
 const AddTask = () => {
   const { user, logOut } = useContext(AuthContext);
@@ -34,7 +35,7 @@ const AddTask = () => {
     // console.log({ title, description, category, formattedEndDate, email });
 
     try {
-      const response = await axios.post("http://localhost:5000/tasks", {
+      const response = await axios.post(`${import.meta.env.VITE_url}/tasks`, {
         email,
         title,
         description,
@@ -44,6 +45,13 @@ const AddTask = () => {
 
       if (response) {
         handleClose();
+        Swal.fire({
+          title: "Added!",
+          text: "Your task has been added.",
+          icon: "success",
+          iconColor: "#FF4500",
+          confirmButtonColor: "#FF4500",
+        });
       }
     } catch (error) {
       console.error("Error adding task:", error);
@@ -55,12 +63,12 @@ const AddTask = () => {
       <div className="max-w-screen-2xl px-4 mx-auto mt-4 flex justify-between items-center">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-6 py-3 bg-[#FF633C] text-white font-semibold rounded-lg shadow-md hover:bg-[#FF4500] transition duration-300 flex items-center gap-2"
+          className="px-6 py-3 cursor-pointer bg-[#FF633C] text-white font-semibold rounded-lg shadow-md hover:bg-[#FF4500] transition duration-300 flex items-center gap-2"
         >
           <FaTasks /> Add Task
         </button>
         <div className="flex gap-5 text-white text-center">
-          <button onClick={logOut}>
+          <button onClick={logOut} className="cursor-pointer">
             <FiLogOut className="text-3xl" />
           </button>
           <div>
@@ -143,13 +151,13 @@ const AddTask = () => {
               <div className="flex justify-between mt-6">
                 <button
                   onClick={handleClose}
-                  className="px-6 py-2 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
+                  className="px-6 py-2 cursor-pointer bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#FF633C] text-white font-semibold rounded-lg hover:bg-[#FF4500]"
+                  className="px-6 py-2 cursor-pointer bg-[#FF633C] text-white font-semibold rounded-lg hover:bg-[#FF4500]"
                 >
                   Save
                 </button>

@@ -50,7 +50,7 @@ const Login = () => {
             {/* Google Sign-In Button */}
             <button
               onClick={handleGoogleSign}
-              className="w-full flex items-center justify-center mt-2 md:mt-16 py-3 bg-[#FF4500] text-white rounded-md hover:bg-[#FF633C] focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full cursor-pointer flex items-center justify-center mt-2 md:mt-16 py-3 bg-[#FF4500] text-white rounded-md hover:bg-[#FF633C] focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <FaGoogle className="mr-2 text-lg" />
               Sign in with Google
