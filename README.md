@@ -1,5 +1,9 @@
 # Task Management Application
 
+<div align="center">
+  <img height="full" src="https://api.empowernextgenbd.com/uploads/home.png"  />
+</div>
+
 ## 📌 Description
 A Task Management Application that allows users to add, edit, delete, and reorder tasks using a drag-and-drop interface. Tasks are categorized into three sections: **To-Do, In Progress, and Done**. Users can sign in using **Firebase Authentication (Google Sign-in)**, and all task updates are saved instantly in **MongoDB** via an **Express.js** backend with **real-time synchronization**.
 
