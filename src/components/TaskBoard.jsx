@@ -11,7 +11,9 @@ import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
 import { AuthContext } from "../provider/AuthProvider";
 
-const socket = io(`${import.meta.env.VITE_url}`);
+// const socket = io(`http://localhost:5000`);
+// const socket = io(`https://server-to-do.vercel.app`);
+const socket = io(`https://todo-website-server-side.onrender.com`);
 
 const TaskBoard = () => {
   const { user } = useContext(AuthContext);
